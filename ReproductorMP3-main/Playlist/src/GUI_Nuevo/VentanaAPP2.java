@@ -1,22 +1,22 @@
 package GUI_Nuevo;
 
 import java.io.File;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Random;
 
 import Recursos.NodoDoble;
-//import Reproductor.PlayList;
 import ReproductorNuevo.*;
 import javafx.application.Application;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
-//import javafx.scene.control.Label;
+import javafx.scene.control.ListCell;
 import javafx.scene.control.ListView;
-//import javafx.scene.control.Slider;
-//import javafx.scene.control.TreeItem;
 import javafx.scene.control.TreeView;
 import javafx.scene.image.ImageView;
-//import javafx.scene.input.Dragboard;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
@@ -25,69 +25,62 @@ import javafx.scene.layout.VBox;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Random;
-//import java.util.random.*;
-
 public class VentanaAPP2 extends Application{
+    /*---------------------------------------------------- */
+    //CONSTANTES DE COLOR
+    //colores 
+    public static final String COLOR_BG = "#121212";      // Negro fondo
+    public static final String COLOR_SIDEBAR = "#030303"; // Negro más claro
+    public static final String COLOR_BOTON = "#42c63eb7"; // Dorado/Amarillo principal//efb810
+    public static final String COLOR_TEXTO = "#FFFFFF";    // Blanco
+    /*--------------------------------------------------- */
+    //Componentes de UI
     //botones de Control
     private PanelControles panelControles;
     //botones de Ordenar
     private PanelOrdenar panelOrdenar;
     //clase del contenedor de la lista
     private PanelInfo panelInfo;
-    //clase del contenedor
-    //private ImagenContener contenedorImg;
+    //boton
+    private Button button_addFiles;
+    //imagen
     private ListaVisible list;
+    private ListView<String> listViewPlayList;
+    private ImageView portada;
+    private StackPane contenedorImagen;
+    
+
+    /*--------------------------------------------------- */
+    //Estado de la aplicacion
+
     private NodoDoble cancionActual;
     private boolean ordenado=false;
+    private boolean pausado=false;
+    private boolean bucle=false;
+    private boolean rand=false;
+    private int indiceActual;
     //
+    //futuras acciones
+    private Map<String, ListaCanciones> mapaAlbumes;
+    private TreeView<String> treeViewBiblioteca;
 
-    private Button button_addFiles;
+    //objetos 
     private ReproductorMP3 reproductor;
     private ListaCanciones playlist;
     private ListaCancionesOrd playlistOrd;
     private ListaCanciones playlistRandom;
     private LectorMP3 lector;
-    //
-    private String background;
-    //
-    private ListView<String> listViewPlayList;
-    private ImageView portada;
-
-    private boolean pausado=false;
-    private boolean bucle=false;
-    private boolean repetir=false;
-    private boolean rand=false;
-    private boolean Pausa=false;
-    private int indiceActual;
-
-    //
-    private Map<String, ListaCanciones> mapaAlbumes;
-    private TreeView<String> treeViewBiblioteca;
-    private StackPane contenedorImage;
     private CargaArchivos carga;
-    //colores 
-    public static final String COLOR_BG = "#121212";      // Negro fondo
-    public static final String COLOR_SIDEBAR = "#030303"; // Negro más claro
-    public static final String COLOR_BOTON = "#42c63eb7"; // Dorado/Amarillo principal//efb810
-    public static final String COLOR_TEXTO = "#FFFFFF";    // Blanco
-    public void start(Stage stage) {
-        //
-        String background = "#cdf1be";
-        String sidebar = "#191414";
-        String green = "#efb810";
-        String text = "#FFFFFF";
-        BorderPane root = new BorderPane();
-        root.setStyle("-fx-background-color: " + background);
 
+    /*--------------------------------------------------- */
+    //inicio de JavaFX
+    @Override
+    public void start(Stage stage) {
         inicializarComponentes(stage);
-        //habilitarDragAndDrop();
+        BorderPane root = new BorderPane();
+        root.setStyle("-fx-background-color: " + COLOR_TEXTO);
         Scene escena = new Scene(crearLayout(), 700, 500);
-        
-        stage.setTitle("Reproductor MP3 de musica");
+        stage.setTitle("Reproductor MP3");
         stage.setScene(escena);
         CentrarImagenCentro(stage);
         stage.show();
@@ -95,26 +88,20 @@ public class VentanaAPP2 extends Application{
     }
 
     private void inicializarComponentes(Stage stage) {
-         //clases de contenedores
-        this.listViewPlayList = new ListView<String>();
-        this.list=new ListaVisible(listViewPlayList);
-        //funciones del reproductor
+        // Lista y funciones del reproductor
         this.reproductor = new ReproductorMP3();
         this.playlist = new ListaCanciones();
         this.playlistOrd = new ListaCancionesOrd(null);
         this.playlistRandom=new ListaCanciones();
         this.lector = new LectorMP3();
-        //this.labelCancionActual = new Label("Canción actual: ");
         this.cancionActual=null;
-        this.portada=new ImageView();//findViewById(R.id.miImageView);
-
-        // Le damos un tamaño inicial para que no nazca en 0px mientras se arma el Layout
-    this.portada.setFitWidth(150);
-    this.portada.setFitHeight(150);
+        this.portada=new ImageView();
+        //componentes visuales
+        this.listViewPlayList = new ListView<String>();
+        this.list=new ListaVisible(listViewPlayList);
         this.panelControles=new PanelControles();
         this.panelOrdenar=new PanelOrdenar();
         this.panelInfo=new PanelInfo();
-
         this.button_addFiles = new Button("Add Files");
         this.reproductor.setControlesInterfaz(
         this.panelInfo.getSliderVolumen(),
@@ -123,13 +110,17 @@ public class VentanaAPP2 extends Application{
         this.panelInfo.getTiempoTotal(),
         this.portada,
         this.panelControles);
+        //portada
         // Hace que el vinilo aparezca de entrada apenas se abre la aplicación
         this.reproductor.cargarPortadaPorDefecto();
+        this.contenedorImagen=new StackPane(this.portada);
+        // Le damos un tamaño inicial para que no nazca en 0px mientras se arma el Layout
+        this.portada.setFitWidth(150);
+        this.portada.setFitHeight(150);
         
-        this.contenedorImage=new StackPane(this.portada);
         this.treeViewBiblioteca=new TreeView<>();
         this.mapaAlbumes=new HashMap<>();
-        
+        //carga de archivos
         this.carga=new CargaArchivos(this.listViewPlayList,
             this.treeViewBiblioteca,
             this.playlist, 
@@ -138,7 +129,7 @@ public class VentanaAPP2 extends Application{
             this.lector,
             this); 
         this.carga.habilitarDragAndDrop();
-        //this.carga.construirArbolAlbumes();
+        configurarCellFactory();
         registrarEventos(stage);
     }
 
@@ -153,7 +144,7 @@ public class VentanaAPP2 extends Application{
         this.portada.setSmooth(true);//mejora la calidad del escalado
         //le pedimos al imageView que se adapte al contenedor, no a su tamaño real
         //el conetendor de la imagen (StackPane)
-        StackPane contenedorImagen = new StackPane(this.portada);
+        contenedorImagen = new StackPane(this.portada);
         contenedorImagen.setAlignment(Pos.CENTER);
         contenedorImagen.setMinWidth(200);
         contenedorImagen.setMinHeight(210);
@@ -186,24 +177,16 @@ public class VentanaAPP2 extends Application{
         this.portada.setClip(clipCircular);
         //El contenedor central (HBox)
         HBox centroBox=new HBox(30);
-        //centroBox.setAlignment(Pos.CENTER);
         centroBox.getChildren().addAll(contenedorImagen,listViewPlayList);
-       //VBox.setVgrow(listViewPlayList,Priority.ALWAYS);
-        //HBox.setHgrow(listViewPlayList,Priority.ALWAYS);
         //se asegura que el centro ocupe todo el ancho
         centroBox.setMaxWidth(Double.MAX_VALUE);
-        centroBox.setFillHeight(false);//ayuda a mantener la alineacion vertical
-        //StackPane contenedorImagen = new StackPane(portada);
-        //StackPane.setAlignment(portada, Pos.CENTER_LEFT);//por defecto lo tiramos a la izquiera para que no pegue al borde 
+        centroBox.setFillHeight(false);//ayuda a mantener la alineacion vertical 
         StackPane.setMargin(portada, new javafx.geometry.Insets(10,10,10,10)); //lo dejamos con 50px de margen izq
         
         listViewPlayList.setMaxWidth(Double.MAX_VALUE);
         listViewPlayList.setMinWidth(300);
         listViewPlayList.setPrefWidth(300);
         VBox.setVgrow(centroBox, Priority.ALWAYS);
-        //HBox importateBox = new HBox(30,contenedorImagen,listViewPlayList);
-        //addFilesBox.getChildren().add(importateBox);
-        //playlistBox.setAlignment(Pos.CENTER);
         centroBox.setAlignment(Pos.CENTER);//mantiene a ambos elementos centrados
         HBox.setHgrow(contenedorImagen, Priority.ALWAYS);
 
@@ -233,7 +216,7 @@ public class VentanaAPP2 extends Application{
        if (list != null) {
         if(rand)this.list.actualizarListView(playlistRandom);
         else{
-            if (ordenado){//&& playlistOrd != null) {
+            if (ordenado){//
                 this.list.actualizarListView(playlistOrd); // Renderiza la ordenada
             } else {
                 this.list.actualizarListView(playlist);    // Renderiza la común
@@ -278,7 +261,6 @@ public class VentanaAPP2 extends Application{
 
         this.panelControles.getBtnPrev().setOnAction(e->{
         System.out.println("PREVIO");
-        //if(repetido) cancion = cancionActual ;
                 Cancion cancion = getCancionPrevia();//actualizamos la cabecera
                 if(bucle&& cancion==null){
                     //si se termino la playlist y el bucle esta activo se reinicia la playlist
@@ -316,12 +298,10 @@ public class VentanaAPP2 extends Application{
             });
 
         this.panelControles.getBtnPlay().setOnAction(e -> {
-            //b=false;
             System.out.println("PLAY");
             Cancion cancion=getCancionActual();
-            if(cancion!=null){//nose que tan necesario sea porque si ordenamos y solo actualizamos el nodo de cancionActual no es necesario controlar si es ordena o no
+            if(cancion!=null){
                 if(pausado){
-                    //reproductor.reanudar();
                     reproductor.pausar();
                     pausado=false;
                 }else{
@@ -344,8 +324,6 @@ public class VentanaAPP2 extends Application{
 
         this.panelControles.getBtnNext().setOnAction(e -> {
             System.out.println("SIGUIENTE");
-            //Cancion cancion;
-            //if(repetir)  cancion= (Cancion)cancionActual.getNodoInfo();
                 Cancion cancion = getCancionSiguiente();//actualizamos la cabecera 
                 if(bucle&& cancion==null){
                     if(rand) {
@@ -605,11 +583,12 @@ public class VentanaAPP2 extends Application{
         if(pausado){
             this.panelControles.getBtnPlay().setText("PLAY ▶");
             //this.reproductor.pausar();
-            System.out.println("pausado");
+            System.out.println("PLAY");
             //this.pausado=false;
         }else{
             //this.reproductor.pausar();
             this.panelControles.getBtnPlay().setText("PAUSE ⏸");
+            System.out.println("pausado");
             //this.pausado=true;
         }
     }
@@ -692,7 +671,6 @@ public class VentanaAPP2 extends Application{
         // Extraemos el objeto Cancion real antes de perder las referencias
         Cancion cancionABorrar = (Cancion) cancionActual.getNodoInfo();
         // 2. Sincronización del puntero: Movemos la reproducción al tema siguiente o anterior
-       // if(cancionActual.getNextNodo()!=null&&cancionActual.getPrevNodo()!=null){
         if (cancionActual.getNextNodo() != null) {
             this.cancionActual = cancionActual.getNextNodo();
         } else if (cancionActual.getPrevNodo() != null) {
@@ -702,7 +680,7 @@ public class VentanaAPP2 extends Application{
         }
         //}
         // 3. Eliminación en la Playlist Principal usando tu método buscar()
-        int indiceComun = this.playlist.buscar(cancionABorrar); // ◀️ Le pasamos la Cancion, no el Nodo
+        int indiceComun = this.playlist.buscar(cancionABorrar); //Le pasamos la Cancion, no el Nodo
         if (indiceComun != -1) {
             this.playlist.eliminar(indiceComun);
         }
@@ -727,7 +705,33 @@ private void actualizarSeleccionVisual(Cancion cancionActualizada) {
         listViewPlayList.getSelectionModel().select(indice);
         // Hace scroll automático si la canción quedó muy abajo o muy arriba
         listViewPlayList.scrollTo(indice);
+        listViewPlayList.refresh();
     }
 }
+
+private void configurarCellFactory() {
+        this.listViewPlayList.setCellFactory(lv -> new ListCell<>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+
+                if (empty || item == null) {
+                    setText(null);
+                    setStyle("");
+                    return;
+                }
+
+                setText(item);
+
+                boolean esActual = cancionActual != null &&
+                    item.equals(((Cancion) cancionActual.getNodoInfo()).toString());
+
+                if (esActual) {
+                    setStyle("-fx-background-color: #50e00e; -fx-text-fill: black;");
+                } else {
+                    setStyle("-fx-background-color: #191414; -fx-text-fill: white;");
+                }
+            }
+        });
+    }
 }
-    
